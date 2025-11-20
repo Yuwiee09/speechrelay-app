@@ -1,0 +1,1364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Speech Relay Challenge — Rounds + History</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f7fb; --card:#ffffff; --muted:#6b7280; --accent:#0ea5a3;
+    --red:#e11d48; --green:#16a34a; --yellow:#f59e0b; --shadow: 0 6px 18px rgba(15,23,42,0.08);
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body{margin:0;background:linear-gradient(180deg,#fbfdff 0%,var(--bg) 100%);color:#111;min-height:100vh;}
+  .container{max-width:1200px;margin:18px auto;padding:14px;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo h1{margin:0;font-size:18px;letter-spacing:0.6px}
+  nav{display:flex;gap:10px;align-items:center}
+  nav button{background:transparent;border:none;padding:8px 12px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer}
+  nav button.active{background:rgba(14,165,163,0.12);color:var(--accent)}
+  .round-controls{display:flex;gap:8px;align-items:center;margin-left:12px}
+  .round-btn{padding:8px 10px;border-radius:8px;border:none;font-weight:700;cursor:pointer}
+  .round-btn.set{background:#06b6d4;color:#fff}
+  .round-btn.new{background:#10b981;color:#fff}
+  .round-btn.reset{background:#ef4444;color:#fff}
+
+  .main-grid{display:grid;grid-template-columns:1fr 420px;gap:18px;margin-top:12px}
+  .card{background:var(--card);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+  .hero{height:420px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border-radius:14px}
+  .hero img{max-width:100%;max-height:100%;object-fit:cover;border-radius:10px}
+  .start-btn{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;background:var(--red);color:white;padding:12px 22px;border-radius:999px;font-weight:700;border:none;box-shadow:0 8px 26px rgba(225,29,72,0.14);cursor:pointer;font-size:16px}
+  .timer{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+  .timer .big{font-size:34px;font-weight:800;text-align:center;padding:18px 10px;border-radius:10px;background:#fff}
+  .controls{display:flex;gap:8px;justify-content:center}
+  .btn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+  .btn.green{background:#10b981;color:#fff}.btn.yellow{background:#f59e0b;color:#fff}.btn.red{background:#ef4444;color:#fff}
+  .tiny{font-size:12px;color:var(--muted)}
+  .teams-list{max-height:240px;overflow:auto;padding-right:6px}
+  .team-card{display:flex;justify-content:space-between;align-items:start;padding:10px;border-radius:8px;border:1px solid #f0f0f3;margin-bottom:8px}
+  .member-chip{display:inline-block;background:#f8fafc;padding:6px 8px;border-radius:999px;margin:4px;font-size:13px}
+  .card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .game-card{border-radius:10px;border:1px solid #eee;padding:10px;background:#fff;display:flex;gap:8px;align-items:center;position:relative}
+  .game-card img{
+    width:120px;
+    height:auto;
+    max-height:140px;
+    object-fit:contain;
+    border-radius:6px;
+    flex-shrink:0;
+  }
+  .topic-box{min-height:140px;border:1px dashed #e6e9ee;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;background:#fff;padding:18px;text-align:center}
+  .leaderboard-list{max-height:320px;overflow:auto}
+  .leaderboard-card-top{
+    background:rgba(34,197,94,0.08);
+    border-color:#22c55e !important;
+    box-shadow:0 0 0 1px rgba(34,197,94,0.15);
+  }
+  .leaderboard-medal{
+    font-size:18px;
+    margin-right:6px;
+  }
+  .sold-badge{position:absolute;top:8px;right:8px;background:#ef4444;color:#fff;padding:6px 8px;border-radius:999px;font-weight:700;font-size:12px}
+  .owned-label{font-size:12px;color:var(--muted);margin-top:6px}
+  footer{margin-top:22px;text-align:center;color:var(--muted);font-size:13px}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:60}
+  .modal{background:#fff;border-radius:12px;padding:18px;width:760px;max-width:94%;box-shadow:0 12px 40px rgba(2,6,23,0.3)}
+  .modal textarea{width:100%;min-height:200px;padding:10px;border-radius:8px;border:1px solid #eef2ff;resize:vertical}
+  .modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .round-list {display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .round-item{padding:8px 10px;border-radius:8px;border:1px solid #e6eef6;background:#fff;cursor:pointer}
+  .round-item.active{background:#06b6d4;color:#fff;border-color:#06b6d4}
+  .history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .history-card{padding:10px;border-radius:10px;border:1px solid #f1f5f9;background:#fff}
+  @media (max-width:980px){
+    .main-grid{grid-template-columns:1fr}
+    .hero{height:260px}
+    .topic-box{min-height:120px;font-size:18px}
+  }
+  input[type="text"], input[type="number"], textarea, select { padding:8px;border-radius:8px;border:1px solid #e6eef6;width:100%;font-size:14px }
+  label{font-weight:600;margin-bottom:6px;display:block}
+  .small-muted{font-size:13px;color:var(--muted)}
+
+  /* ABOUT: big stacked images */
+  .about-block{
+    margin-bottom:16px;
+  }
+  .about-img{
+    width:100%;
+    display:block;
+    border-radius:14px;
+    max-height:420px;      /* similar height as hero.gif */
+    object-fit:cover;
+    margin-bottom:8px;
+  }
+  .about-caption{
+    font-size:14px;
+    color:#4b5563;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="logo">
+        <div>
+          <h1>Speech Relay Challenge</h1>
+          <div class="tiny">The Confidence Conquest — teacher dashboard</div>
+        </div>
+      </div>
+
+      <div class="round-controls">
+        <div style="font-weight:700">Round</div>
+        <input id="roundNumberInput" type="number" min="1" value="1" style="width:84px;padding:6px;border-radius:8px;border:1px solid #e6eef6">
+        <button class="round-btn set" id="setRoundBtn">Set</button>
+        <button class="round-btn new" id="newRoundBtn">Next Round</button>
+        <button class="round-btn reset" id="resetRoundBtn">Reset Round</button>
+      </div>
+    </div>
+
+    <nav id="nav">
+      <button data-section="home" class="active">Home</button>
+      <button data-section="team">Team</button>
+      <button data-section="cards">Game Cards</button>
+      <button data-section="topic">Topic Picker</button>
+      <button data-section="leader">Leaderboard</button>
+      <button data-section="scoring">Scoring</button>
+      <button data-section="history">Round History</button>
+      <button data-section="about">About</button>
+    </nav>
+  </header>
+
+  <div class="main-grid">
+    <div>
+      <!-- HOME -->
+      <div class="card" id="section-home">
+        <div class="hero" id="heroArea">
+          <img id="heroImg" src="images/hero.gif" alt="hero">
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;justify-content:center">
+          <button class="btn green" onclick="navigateTo('topic')">Open Topic Picker</button>
+          <button class="btn yellow" onclick="navigateTo('cards')">Open Game Cards</button>
+        </div>
+      </div>
+
+      <!-- TEAM -->
+      <div class="card" id="section-team" style="display:none">
+        <h2>Teams</h2>
+        <div style="display:flex;gap:12px;">
+          <div style="flex:1">
+            <label>Team Name</label>
+            <input id="teamName" type="text" placeholder="e.g., Team A">
+
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+              <div style="flex:1">
+                <label style="margin-bottom:6px">Starting coins</label>
+                <input id="teamCoins" type="number" min="0" value="10" placeholder="e.g., 10">
+              </div>
+              <div style="width:160px">
+                <label style="margin-bottom:6px">Add member</label>
+                <div style="display:flex;gap:8px">
+                  <input id="memberName" type="text" placeholder="Member name">
+                  <button class="btn green" id="addMemberBtn">+ Add</button>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:8px">
+              <button class="btn" id="createTeamBtn" style="background:#0ea5a3;color:white">Create or Save Team</button>
+              <small class="tiny" style="margin-left:8px">Team must have 4–10 members to be valid</small>
+            </div>
+          </div>
+          <div style="width:360px">
+            <label>Current team preview</label>
+            <div class="team-card" id="previewTeam">
+              <div>
+                <div id="previewName" style="font-weight:700">No team</div>
+                <div id="previewMembers" style="margin-top:8px"></div>
+              </div>
+              <div style="text-align:right">
+                <div class="tiny">Confidence</div>
+                <div style="font-size:18px;font-weight:800" id="previewCoins">10</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0">
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <label>All Teams</label>
+            <div class="teams-list" id="teamsList"></div>
+          </div>
+          <div style="width:360px">
+            <label>Selected team details</label>
+            <div id="teamDetails" style="min-height:220px;padding:10px;border-radius:10px;border:1px solid #f1f5f5"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARDS -->
+      <div class="card" id="section-cards" style="display:none">
+        <h2>Game Cards — Market</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="tiny">Press "Draw 5" to randomly pick 5 available cards for sale.</div>
+          <div><button class="btn" id="drawCardsBtn" style="background:#2563eb;color:white">Draw 5 Cards</button></div>
+        </div>
+        <div style="margin-top:12px" id="drawArea"></div>
+
+        <hr style="margin:12px 0">
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <label>Team shop</label>
+            <select id="shopTeam"></select>
+            <div id="shopCoins" style="margin-top:8px;font-weight:700">Coins: 10</div>
+            <div style="margin-top:8px">
+              <div class="tiny">Click a card to BUY it for the selected team. Click again to UNBUY (refund) if your team owns it.</div>
+              <div id="purchases" style="margin-top:8px"></div>
+            </div>
+          </div>
+          <div style="width:360px">
+            <label>Full deck (15 cards)</label>
+            <div style="max-height:260px;overflow:auto" id="allDeck"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOPIC PICKER -->
+      <div class="card" id="section-topic" style="display:none">
+        <h2>Topic Picker</h2>
+
+        <div style="margin-bottom:12px">
+          <label style="display:block;margin-bottom:8px;font-weight:700">Picked topic</label>
+          <div class="topic-box" id="pickedTopic">Your topic will appear here.</div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:14px">
+          <button class="btn" id="assignTopic" style="background:#3b82f6;color:white;min-width:140px">Assign Topic</button>
+          <button class="btn" id="resetTopic" style="background:#6b7280;color:white;min-width:140px">Reset Topic</button>
+          <button class="btn" id="openAdmin" style="background:#06b6d4;color:white;min-width:140px">Admin Panel</button>
+        </div>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div class="card" id="section-leader" style="display:none">
+        <h2>Leaderboard — Round <span id="currentRoundDisplay">1</span></h2>
+        <div style="margin-bottom:8px" class="tiny">Shows points for the current round and cumulative total.</div>
+        <div class="leaderboard-list" id="leaderList"></div>
+      </div>
+
+      <!-- SCORING -->
+      <div class="card" id="section-scoring" style="display:none">
+        <h2>Scoring — Round <span id="currentRoundDisplay2">1</span></h2>
+        <div class="small-muted" style="margin-bottom:6px">
+          To edit another round, change the Round number at the top (Set / Next Round), then return here.
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <label>Select team</label>
+            <select id="scoreTeamSelect"></select>
+            <div style="margin-top:8px">
+              <label>Individual scores (0-5 per criterion)</label>
+              <div class="score-inputs" id="scoreInputs"></div>
+              <div style="margin-top:8px">
+                <button class="btn" id="saveScores" style="background:#10b981;color:white">Save scores (this round)</button>
+                <div class="small-muted" style="margin-top:6px">
+                  Scores are auto-saved as drafts while typing, and finalized to history when you click "Save".
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="width:360px">
+            <label>Scoring rubric</label>
+            <div style="padding:10px;border-radius:8px;border:1px solid #f2f2f6;background:#fff">
+              <div><strong>Content</strong> (5 pts) — relevance & depth</div>
+              <div><strong>Coherence & Flow</strong> (5 pts)</div>
+              <div><strong>Confidence & Stage Presence</strong> (5 pts)</div>
+              <div><strong>Delivery</strong> (5 pts)</div>
+              <div style="margin-top:6px" class="tiny">Team round total = sum of individuals; cumulative shown in leaderboard and history.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROUND HISTORY -->
+      <div class="card" id="section-history" style="display:none">
+        <h2>Round History</h2>
+        <div class="small-muted" style="margin-bottom:8px">Click a round to view per-team breakdown and per-player scores. Latest round selected by default.</div>
+
+        <div class="round-list" id="roundList"></div>
+
+        <div id="historyDetail" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ABOUT -->
+      <div class="card" id="section-about" style="display:none">
+        <h2>About the Game</h2>
+        <div id="aboutText"></div>
+      </div>
+    </div>
+
+    <!-- ASIDE (Quick Timer / Stats) -->
+    <aside>
+      <div class="card timer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Quick Timer</div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="display:flex;gap:8px">
+            <input id="quickMin" type="number" value="0" min="0" style="width:70px">
+            <input id="quickSec" type="number" value="45" min="0" style="width:70px">
+            <button class="btn" id="quickSet" style="background:#2563eb;color:#fff">Set</button>
+          </div>
+          <div style="margin-top:12px" class="big" id="quickDisplay">00:45</div>
+          <div class="controls" style="margin-top:10px">
+            <button class="btn green" id="quickStart">Start</button>
+            <button class="btn yellow" id="quickPause">Pause</button>
+            <button class="btn red" id="quickReset">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Quick Stats</div>
+          <div class="tiny">Teams / Coins</div>
+        </div>
+        <div style="margin-top:10px" id="quickStats"></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer></footer>
+</div>
+
+<!-- Admin Modal -->
+<div class="modal-backdrop" id="adminModal">
+  <div class="modal">
+    <h3 style="margin-top:0">Topic Admin Panel</h3>
+    <p class="tiny">Enter one topic per line. Save to update topics available to Assign Topic.</p>
+    <textarea id="adminTopicsTextarea" placeholder="One topic per line"></textarea>
+    <div class="modal-actions">
+      <button class="btn" id="closeAdmin">Close</button>
+      <button class="btn" id="clearTopics" style="background:#ef4444;color:#fff">Clear All</button>
+      <button class="btn green" id="saveAdminTopics">Save Topics</button>
+    </div>
+  </div>
+</div>
+
+<!-- Round detail modal -->
+<div class="modal-backdrop" id="roundDetailModal">
+  <div class="modal" id="roundDetailCard">
+    <h3 id="roundDetailTitle">Round details</h3>
+    <div id="roundDetailBody" style="max-height:480px;overflow:auto"></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn" id="closeRoundDetail">Close</button>
+      <button class="btn" id="exportRoundCSV" style="background:#06b6d4;color:#fff">Export CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======= Data layer (localStorage) ======= */
+const STORAGE_KEY = 'speech_relay_v1_fixed_rounds_history_v4_autoscore';
+let state = {
+  teams: [],
+  topics: [],
+  deck: [],
+  drawn: [],
+  pickedTopic: '',
+  timer: {seconds:45, running:false, remaining:45},
+  round: { current: 1 },
+  // NEW: auto-save drafts per team & round
+  draftScores: {}
+};
+
+function saveState(){
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e){
+    console.error('Failed to save state', e);
+  }
+  renderAll();
+}
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      // keep compatibility with older saved state
+      state = Object.assign({
+        teams: [],
+        topics: [],
+        deck: [],
+        drawn: [],
+        pickedTopic: '',
+        timer: {seconds:45, running:false, remaining:45},
+        round: { current: 1 },
+        draftScores: {}
+      }, parsed);
+      if(!state.draftScores) state.draftScores = {};
+      if(!state.round) state.round = { current: 1 };
+    } catch(e){
+      console.error('Failed parse state, resetting', e);
+      localStorage.removeItem(STORAGE_KEY);
+      initDefaults();
+    }
+  } else initDefaults();
+}
+
+/* UPDATED: card prices by card number */
+function initDefaults(){
+  const cardConfigs = [
+    { tier: 'low',  price: 2 },
+    { tier: 'low',  price: 2 },
+    { tier: 'low',  price: 2 },
+    { tier: 'low',  price: 2 },
+    { tier: 'low',  price: 2 },
+    { tier: 'mid',  price: 3 },
+    { tier: 'mid',  price: 3 },
+    { tier: 'mid',  price: 4 },
+    { tier: 'mid',  price: 4 },
+    { tier: 'mid',  price: 4 },
+    { tier: 'high', price: 5 },
+    { tier: 'high', price: 5 },
+    { tier: 'high', price: 6 },
+    { tier: 'high', price: 6 },
+    { tier: 'high', price: 6 }
+  ];
+
+  state.deck = cardConfigs.map((cfg, i) => ({
+    id: 'card' + (i + 1),
+    title: `Card ${i + 1}`,
+    price: cfg.price,
+    tier: cfg.tier,
+    image: `images/cards/card${i + 1}.jpg`,
+    soldBy: null
+  }));
+
+  state.topics = [
+    "The danger of staying in your comfort zone",
+    "Social media: connection or illusion of connection?",
+    "If I could change one thing in the education system...",
+    "Failure as a stepping stone to success"
+  ];
+  state.teams = [
+    { id: 'team_a', name: 'Team A', members: ['Ana','Ben','Cora','Dan'], coins: 10, purchases: [], scores: [], rounds: [], history: [] },
+    { id: 'team_b', name: 'Team B', members: ['Eli','Fay','Gio','Hana'], coins: 10, purchases: [], scores: [], rounds: [], history: [] }
+  ];
+  state.pickedTopic = '';
+  state.drawn = [];
+  state.timer = { seconds:45, running:false, remaining:45 };
+  state.round = { current: 1 };
+  state.draftScores = {};
+  saveState();
+}
+loadState();
+
+/* ======= Helpers ======= */
+function uid(prefix='id'){return prefix+Math.random().toString(36).slice(2,9)}
+function el(html){ const div = document.createElement('div'); div.innerHTML = html.trim(); return div.firstChild; }
+function getCurrentRoundNumber(){ return state.round && state.round.current ? state.round.current : 1; }
+
+/* ======= Navigation ======= */
+document.querySelectorAll('#nav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    showSection(btn.dataset.section)
+  })
+});
+function navigateTo(section){
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active', b.dataset.section===section));
+  showSection(section)
+}
+function showSection(s){
+  ['home','team','cards','topic','leader','scoring','history','about'].forEach(sec=>{
+    const node = document.getElementById('section-'+sec);
+    if(node) node.style.display = sec===s ? 'block' : 'none';
+  });
+  if(s === 'scoring'){
+    renderScoreInputs(); // refresh scoring UI when opening scoring tab
+  }
+}
+
+/* ======= Round controls ======= */
+document.getElementById('setRoundBtn')?.addEventListener('click', ()=>{
+  const val = parseInt(document.getElementById('roundNumberInput').value,10) || 1;
+  if(val < 1) return alert('Round must be >= 1');
+  state.round.current = val;
+  state.teams.forEach(t => {
+    t.rounds = t.rounds || [];
+    while(t.rounds.length < state.round.current) t.rounds.push(0);
+    t.history = t.history || [];
+    while(t.history.length < state.round.current) t.history.push(null);
+  });
+  saveState();
+});
+document.getElementById('newRoundBtn')?.addEventListener('click', ()=>{ startNewRound(); });
+document.getElementById('resetRoundBtn')?.addEventListener('click', ()=>{
+  if(!confirm('Reset current round data? This clears card ownership and this round scores but keeps previous rounds.')) return;
+  resetCurrentRound();
+});
+
+function startNewRound(){
+  state.round.current = getCurrentRoundNumber() + 1;
+  const newRoundNumber = state.round.current;
+
+  state.deck.forEach(c => c.soldBy = null);
+  state.drawn = [];
+  state.teams.forEach(t => {
+    t.purchases = [];
+    t.scores = [];
+    t.rounds = t.rounds || [];
+    while(t.rounds.length < newRoundNumber) t.rounds.push(0);
+    t.history = t.history || [];
+    while(t.history.length < newRoundNumber) t.history.push(null);
+  });
+
+  if(!state.draftScores) state.draftScores = {};
+
+  document.getElementById('roundNumberInput').value = newRoundNumber;
+  saveState();
+  alert('Started Round ' + newRoundNumber + '. Cards and purchases reset.');
+}
+
+function resetCurrentRound(){
+  const roundNumber = getCurrentRoundNumber();
+  const idx = roundNumber - 1;
+
+  state.deck.forEach(c => c.soldBy = null);
+  state.drawn = [];
+  state.teams.forEach(t => {
+    t.purchases = [];
+    t.scores = [];
+    t.rounds = t.rounds || [];
+    t.rounds[idx] = 0;
+    t.history = t.history || [];
+    t.history[idx] = null;
+  });
+
+  // clear drafts for this round
+  if(state.draftScores){
+    Object.keys(state.draftScores).forEach(teamId=>{
+      if(state.draftScores[teamId] && state.draftScores[teamId][roundNumber]){
+        delete state.draftScores[teamId][roundNumber];
+      }
+    });
+  }
+
+  saveState();
+  alert('Round ' + roundNumber + ' reset.');
+}
+
+/* ======= Team management ======= */
+let previewMembers = [];
+document.getElementById('addMemberBtn')?.addEventListener('click', ()=>{
+  const name = document.getElementById('memberName').value.trim();
+  if(!name) return alert('Enter member name');
+  previewMembers.push(name);
+  document.getElementById('memberName').value='';
+  renderPreview();
+});
+document.getElementById('createTeamBtn')?.addEventListener('click', ()=>{
+  const name = document.getElementById('teamName').value.trim();
+  if(!name) return alert('Enter team name');
+  if(previewMembers.length < 4 || previewMembers.length > 10) return alert('Team must have 4–10 members');
+  const coinInput = parseInt(document.getElementById('teamCoins').value, 10);
+  const startingCoins = (isNaN(coinInput) || coinInput < 0) ? 10 : coinInput;
+  const id = uid('team');
+  state.teams.push({id,name,members:previewMembers.slice(), coins:startingCoins, purchases:[], scores:[], rounds: [], history: []});
+  previewMembers = [];
+  document.getElementById('teamName').value='';
+  document.getElementById('teamCoins').value = '10';
+  saveState();
+});
+
+function renderPreview(){
+  const previewNameEl = document.getElementById('previewName');
+  if(previewNameEl) previewNameEl.textContent = document.getElementById('teamName').value || 'New team';
+  const pm = document.getElementById('previewMembers');
+  if(pm) pm.innerHTML = previewMembers.map(m => `<span class="member-chip">${m}</span>`).join('');
+  const coinInputVal = parseInt(document.getElementById('teamCoins')?.value, 10);
+  const pc = document.getElementById('previewCoins');
+  if(pc) pc.textContent = (!isNaN(coinInputVal) && coinInputVal >= 0) ? coinInputVal : '10';
+}
+
+function renderTeamsList(){
+  const out = document.getElementById('teamsList');
+  if(!out) return;
+  out.innerHTML = '';
+  const shopSelect = document.getElementById('shopTeam');
+  const prevShop = shopSelect ? shopSelect.value : null;
+
+  state.teams.forEach(t=>{
+    const node = el(`<div class="team-card">
+      <div>
+        <strong>${t.name}</strong>
+        <div class="tiny">${t.members.length} members</div>
+      </div>
+      <div style="text-align:right">
+        <div class="tiny">Coins</div>
+        <div style="font-weight:800">${t.coins}</div>
+        <div style="margin-top:6px"><button class="btn" data-id="${t.id}">Details</button></div>
+      </div>
+    </div>`);
+    node.querySelector('button').onclick = ()=> showTeamDetails(t.id);
+    out.appendChild(node);
+  });
+
+  if(shopSelect){
+    shopSelect.innerHTML = state.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+    if(prevShop && state.teams.find(x=>x.id===prevShop)) shopSelect.value = prevShop;
+    else if(state.teams.length) shopSelect.value = state.teams[0].id;
+  }
+  const scoreSelect = document.getElementById('scoreTeamSelect');
+  if(scoreSelect){
+    const prevScore = scoreSelect.value;
+    scoreSelect.innerHTML = state.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+    if(prevScore && state.teams.find(x=>x.id===prevScore)) scoreSelect.value = prevScore;
+    else if(state.teams.length) scoreSelect.value = state.teams[0].id;
+  }
+
+  updateShopCoinsDisplay();
+  updateQuickStats();
+}
+
+function showTeamDetails(id){
+  const t = state.teams.find(x=>x.id===id);
+  const node = document.getElementById('teamDetails');
+  if(!t || !node) return;
+  const shop = document.getElementById('shopTeam');
+  if(shop){
+    shop.value = t.id;
+    updateShopCoinsDisplay();
+  }
+  const roundIdx = getCurrentRoundNumber() - 1;
+  const currentRoundPoints = (t.rounds && typeof t.rounds[roundIdx] === 'number') ? t.rounds[roundIdx] : 0;
+  const cumulative = (t.rounds || []).reduce((a,b)=>a+(b||0),0);
+  node.innerHTML = `<div style="font-weight:800">${t.name}</div>
+    <div class="tiny">Members</div>
+    <div style="margin-top:6px">${t.members.map(m=>`<div class="member-chip">${m}</div>`).join('')}</div>
+    <div style="margin-top:8px"><strong>Coins:</strong> <span id="detailCoins_${t.id}">${t.coins}</span></div>
+
+    <div style="margin-top:8px">
+      <label style="font-weight:600;margin-bottom:6px">Adjust Confidence Coins</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="coinInput_${t.id}" type="number" placeholder="+/- amount" style="width:120px">
+        <button class="btn" onclick="addCoinsToTeam('${t.id}')" style="background:#06b6d4;color:#fff">Add</button>
+        <button class="btn" onclick="setCoinsForTeam('${t.id}')" style="background:#2563eb;color:#fff">Set</button>
+      </div>
+      <div class="tiny" style="margin-top:6px">Enter a positive number to add coins; use Set to replace the team's coins value.</div>
+    </div>
+
+    <div style="margin-top:8px"><strong>Purchases (this round):</strong>
+      <div id="p${t.id}" style="margin-top:6px">
+        ${t.purchases.length ? t.purchases.map(p=>`<div class="tiny">${p.title} (${p.price})</div>`).join('') : '<div class="tiny">None</div>'}
+      </div>
+    </div>
+
+    <div style="margin-top:8px"><strong>Round ${getCurrentRoundNumber()} points:</strong> ${currentRoundPoints}</div>
+    <div style="margin-top:6px"><strong>Cumulative points:</strong> ${cumulative}</div>
+
+    <div style="margin-top:8px"><button class="btn" onclick="deleteTeam('${t.id}')">Delete team</button></div>`;
+}
+function deleteTeam(id){
+  if(!confirm('Delete team?')) return;
+  state.teams = state.teams.filter(t=>t.id!==id);
+  state.deck.forEach(c => { if(c.soldBy === id) c.soldBy = null; });
+  if(state.draftScores && state.draftScores[id]) delete state.draftScores[id];
+  saveState();
+}
+
+/* ======= Coin helpers ======= */
+function addCoinsToTeam(teamId){
+  const input = document.getElementById(`coinInput_${teamId}`);
+  if(!input) return alert('Input not found');
+  const val = parseInt(input.value, 10);
+  if(isNaN(val)) return alert('Enter a valid number');
+  const team = state.teams.find(t=>t.id===teamId);
+  if(!team) return alert('Team not found');
+  team.coins = (team.coins || 0) + val;
+  if(team.coins < 0) team.coins = 0;
+  const detailSpan = document.getElementById(`detailCoins_${teamId}`);
+  if(detailSpan) detailSpan.textContent = team.coins;
+  saveState();
+  input.value = '';
+  renderTeamsList();
+  renderLeaderboard();
+}
+
+function setCoinsForTeam(teamId){
+  const input = document.getElementById(`coinInput_${teamId}`);
+  if(!input) return alert('Input not found');
+  const val = parseInt(input.value, 10);
+  if(isNaN(val) || val < 0) return alert('Enter a valid non-negative number');
+  const team = state.teams.find(t=>t.id===teamId);
+  if(!team) return alert('Team not found');
+  team.coins = val;
+  const detailSpan = document.getElementById(`detailCoins_${teamId}`);
+  if(detailSpan) detailSpan.textContent = team.coins;
+  saveState();
+  input.value = '';
+  renderTeamsList();
+  renderLeaderboard();
+}
+
+/* ======= Deck & market ======= */
+function renderDeck(){
+  const all = document.getElementById('allDeck');
+  if(!all) return;
+  if(!state.deck.length){ all.innerHTML = '<div class="tiny">No cards.</div>'; return; }
+  all.innerHTML = state.deck.map(c=>{
+    const owner = c.soldBy ? (state.teams.find(t=>t.id===c.soldBy)?.name || 'Unknown') : null;
+    return `<div class="game-card" style="position:relative">
+      ${owner ? `<div class="sold-badge">Owned</div>` : ''}
+      <img src="${c.image}" onerror="this.src='https://via.placeholder.com/120x90?text=Card'">
+      <div style="flex:1">
+        <div style="font-weight:700">${c.title}</div>
+        <div class="tiny">Price: ${c.price} (${c.tier})</div>
+        ${owner ? `<div class="owned-label">Owned by: ${owner}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('drawCardsBtn')?.addEventListener('click', ()=>{
+  const pool = state.deck.filter(c => !c.soldBy).slice();
+  const drawn = [];
+  while(drawn.length < 5 && pool.length){
+    const i = Math.floor(Math.random()*pool.length);
+    drawn.push(pool.splice(i,1)[0]);
+  }
+  state.drawn = drawn.map(d=>d.id);
+  saveState();
+});
+
+function renderDraw(){
+  const drawArea = document.getElementById('drawArea'); if(!drawArea) return;
+  drawArea.innerHTML='';
+  if(!state.drawn || state.drawn.length===0){
+    drawArea.innerHTML='<div class="tiny">No draw yet. Click Draw 5.</div>';
+    return;
+  }
+  const div = document.createElement('div'); div.className='card-grid';
+  state.drawn.forEach(id=>{
+    const c = state.deck.find(x=>x.id===id); if(!c) return;
+    const owner = c.soldBy ? state.teams.find(t=>t.id===c.soldBy) : null;
+    const shopSelectedId = document.getElementById('shopTeam') ? document.getElementById('shopTeam').value : null;
+    const shopSelectedTeam = state.teams.find(t=>t.id===shopSelectedId);
+
+    const cardNode = document.createElement('div');
+    cardNode.className = 'game-card';
+    cardNode.style.cursor = 'default';
+
+    const img = document.createElement('img');
+    img.src = c.image;
+    img.onerror = ()=> img.src='https://via.placeholder.com/120x90?text=Card';
+    cardNode.appendChild(img);
+
+    const info = document.createElement('div'); info.style.flex='1';
+    info.innerHTML = `<div style="font-weight:700">${c.title}</div><div class="tiny">${c.tier} — ${c.price} coins</div>`;
+    if(owner) info.innerHTML += `<div class="owned-label">Owned by: ${owner.name}</div>`;
+    cardNode.appendChild(info);
+
+    const actionWrap = document.createElement('div');
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+
+    if(owner){
+      if(shopSelectedTeam && owner.id === shopSelectedTeam.id){
+        btn.textContent = 'Unbuy';
+        btn.style.background = '#ef4444'; btn.style.color = '#fff';
+        btn.onclick = ()=> toggleBuyForTeam(c.id, shopSelectedTeam.id);
+      } else {
+        btn.textContent = 'Owned';
+        btn.style.background = '#ddd';
+        btn.disabled = true;
+      }
+    } else {
+      btn.textContent = 'Buy';
+      btn.style.background = '#0ea5a3'; btn.style.color = '#fff';
+      btn.onclick = ()=>{ if(!shopSelectedTeam) return alert('Select a team to purchase'); toggleBuyForTeam(c.id, shopSelectedTeam.id); };
+    }
+
+    actionWrap.appendChild(btn);
+    cardNode.appendChild(actionWrap);
+
+    if(owner){
+      const badge = document.createElement('div');
+      badge.className = 'sold-badge';
+      badge.textContent = 'Owned';
+      cardNode.appendChild(badge);
+    }
+
+    div.appendChild(cardNode);
+  });
+  drawArea.appendChild(div);
+}
+
+function toggleBuyForTeam(cardId, teamId){
+  const team = state.teams.find(t=>t.id===teamId);
+  const card = state.deck.find(c=>c.id===cardId);
+  if(!team || !card) return;
+
+  if(card.soldBy === teamId){
+    team.coins += card.price;
+    team.purchases = (team.purchases || []).filter(p=>p.id !== card.id);
+    card.soldBy = null;
+    saveState();
+    return;
+  }
+
+  if(card.soldBy && card.soldBy !== teamId){
+    return alert('This card is already owned by another team.');
+  }
+
+  if(team.coins < card.price) return alert('Not enough confidence coins');
+  team.coins -= card.price;
+  team.purchases = team.purchases || [];
+  team.purchases.push({ id: card.id, title: card.title, price: card.price, tier: card.tier, image: card.image });
+  card.soldBy = team.id;
+
+  state.drawn = (state.drawn || []).filter(d => d !== card.id);
+  saveState();
+}
+
+/* ======= Topic picker ======= */
+document.getElementById('assignTopic')?.addEventListener('click', ()=>{
+  if(!state.topics || state.topics.length === 0) return alert('No topics available. Open Admin Panel to add topics.');
+  const idx = Math.floor(Math.random() * state.topics.length);
+  state.pickedTopic = state.topics[idx];
+  document.getElementById('pickedTopic').textContent = state.pickedTopic;
+  saveState();
+});
+document.getElementById('resetTopic')?.addEventListener('click', ()=>{
+  state.pickedTopic = '';
+  document.getElementById('pickedTopic').textContent = 'Your topic will appear here.';
+  saveState();
+});
+
+/* Admin modal wiring */
+const adminModal = document.getElementById('adminModal');
+const adminTextarea = document.getElementById('adminTopicsTextarea');
+document.getElementById('openAdmin')?.addEventListener('click', ()=>{
+  adminTextarea.value = state.topics.join('\n');
+  adminModal.style.display = 'flex';
+});
+document.getElementById('closeAdmin')?.addEventListener('click', ()=>{ adminModal.style.display = 'none'; });
+document.getElementById('clearTopics')?.addEventListener('click', ()=>{ if(!confirm('Clear all topics?')) return; adminTextarea.value = ''; });
+document.getElementById('saveAdminTopics')?.addEventListener('click', ()=>{
+  const lines = adminTextarea.value.split('\n').map(s=>s.trim()).filter(Boolean);
+  state.topics = lines;
+  if(state.pickedTopic && !state.topics.includes(state.pickedTopic)) state.pickedTopic = '';
+  adminModal.style.display = 'none';
+  saveState();
+});
+adminModal?.addEventListener('click', (e)=>{ if(e.target === adminModal) adminModal.style.display = 'none'; });
+
+/* ======= Quick timer ======= */
+function secondsToDisplay(s){
+  const mm = String(Math.floor(s/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  return `${mm}:${ss}`;
+}
+document.getElementById('quickSet')?.addEventListener('click', ()=>{
+  const m = parseInt(document.getElementById('quickMin').value)||0;
+  const s = parseInt(document.getElementById('quickSec').value)||0;
+  state.timer.seconds = m*60 + s; state.timer.remaining = state.timer.seconds;
+  document.getElementById('quickDisplay').textContent = secondsToDisplay(state.timer.remaining);
+  saveState();
+});
+let qInt = null;
+function updateQuickDisplay(){
+  document.getElementById('quickDisplay').textContent = secondsToDisplay(state.timer.remaining || state.timer.seconds || 45);
+}
+document.getElementById('quickStart')?.addEventListener('click', ()=>{
+  if(qInt) return;
+  qInt=setInterval(()=>{
+    if(state.timer.remaining>0){
+      state.timer.remaining--;
+      updateQuickDisplay();
+    } else {
+      clearInterval(qInt);qInt=null; alert('Time up');
+    }
+  },1000)
+});
+document.getElementById('quickPause')?.addEventListener('click', ()=>{ clearInterval(qInt);qInt=null });
+document.getElementById('quickReset')?.addEventListener('click', ()=>{
+  clearInterval(qInt);qInt=null;
+  state.timer.remaining = state.timer.seconds || 45;
+  updateQuickDisplay();
+});
+
+/* ======= Scoring & History (with auto-save drafts + edit previous rounds) ======= */
+document.getElementById('scoreTeamSelect').onchange = renderScoreInputs;
+
+function ensureDraftStructure(){
+  if(!state.draftScores) state.draftScores = {};
+}
+
+function getDraftFor(teamId, roundNumber){
+  ensureDraftStructure();
+  if(!state.draftScores[teamId]) state.draftScores[teamId] = {};
+  if(!state.draftScores[teamId][roundNumber]) state.draftScores[teamId][roundNumber] = [];
+  return state.draftScores[teamId][roundNumber];
+}
+
+function handleScoreInputChange(teamId, memberIndex){
+  const roundNumber = getCurrentRoundNumber();
+  const idprefix = `s_${teamId}_${memberIndex}`;
+  const c = parseInt(document.getElementById(idprefix+'_c').value)||0;
+  const f = parseInt(document.getElementById(idprefix+'_f').value)||0;
+  const p = parseInt(document.getElementById(idprefix+'_p').value)||0;
+  const d = parseInt(document.getElementById(idprefix+'_d').value)||0;
+  const total = c+f+p+d;
+
+  const team = state.teams.find(t=>t.id===teamId);
+  if(!team) return;
+  const memberName = team.members[memberIndex];
+
+  const draft = getDraftFor(teamId, roundNumber);
+  draft[memberIndex] = {member:memberName,content:c,flow:f,presence:p,delivery:d,total};
+  saveState(); // auto-save draft
+}
+
+function renderScoreInputs(){
+  const scoreSelect = document.getElementById('scoreTeamSelect');
+  const area = document.getElementById('scoreInputs'); if(!area) return;
+  area.innerHTML='';
+  const id = scoreSelect ? scoreSelect.value : null;
+  const team = state.teams.find(t=>t.id===id);
+  if(!team) return area.innerHTML = '<div class="tiny">Select a team</div>';
+
+  const roundNumber = getCurrentRoundNumber();
+  const roundIdx = roundNumber - 1;
+
+  team.rounds = team.rounds || [];
+  team.history = team.history || [];
+  while(team.rounds.length < roundNumber) team.rounds.push(0);
+  while(team.history.length < roundNumber) team.history.push(null);
+
+  const hist = team.history[roundIdx];
+  const draftForRound = state.draftScores &&
+                        state.draftScores[team.id] &&
+                        state.draftScores[team.id][roundNumber];
+
+  let existingEntries;
+  if(draftForRound && draftForRound.length){
+    existingEntries = draftForRound;
+  } else if(hist && hist.perPlayer && hist.perPlayer.length){
+    existingEntries = hist.perPlayer;
+  } else {
+    existingEntries = [];
+  }
+
+  team.members.forEach((m, idx)=>{
+    const idprefix = `s_${team.id}_${idx}`;
+    const existing = existingEntries[idx] || {member:m,content:0,flow:0,presence:0,delivery:0,total:0};
+
+    const wrapper = document.createElement('div');
+    wrapper.style.border='1px solid #f1f1f5';
+    wrapper.style.padding='8px';
+    wrapper.style.borderRadius='8px';
+    wrapper.style.marginBottom='8px';
+    wrapper.innerHTML = `
+      <div style="font-weight:700">${m}</div>
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <input type="number" id="${idprefix}_c" min="0" max="5" placeholder="Content" value="${existing.content || 0}">
+        <input type="number" id="${idprefix}_f" min="0" max="5" placeholder="Flow" value="${existing.flow || 0}">
+        <input type="number" id="${idprefix}_p" min="0" max="5" placeholder="Presence" value="${existing.presence || 0}">
+        <input type="number" id="${idprefix}_d" min="0" max="5" placeholder="Delivery" value="${existing.delivery || 0}">
+      </div>`;
+    area.appendChild(wrapper);
+
+    // attach auto-save handlers
+    ['c','f','p','d'].forEach(k=>{
+      const input = document.getElementById(`${idprefix}_${k}`);
+      if(input){
+        input.addEventListener('input', ()=> handleScoreInputChange(team.id, idx));
+      }
+    });
+  });
+}
+
+document.getElementById('saveScores')?.addEventListener('click', ()=>{
+  const id = document.getElementById('scoreTeamSelect').value;
+  const team = state.teams.find(t=>t.id===id);
+  if(!team) return alert('Select a team');
+
+  const roundNumber = getCurrentRoundNumber();
+  const roundIdx = roundNumber - 1;
+
+  const entries = [];
+  team.members.forEach((m, idx)=>{
+    const idprefix = `s_${team.id}_${idx}`;
+    const c = parseInt(document.getElementById(idprefix+'_c').value)||0;
+    const f = parseInt(document.getElementById(idprefix+'_f').value)||0;
+    const p = parseInt(document.getElementById(idprefix+'_p').value)||0;
+    const d = parseInt(document.getElementById(idprefix+'_d').value)||0;
+    const total = c+f+p+d;
+    entries.push({member:m,content:c,flow:f,presence:p,delivery:d,total});
+  });
+
+  team.scores = entries; // current working scores
+  team.rounds = team.rounds || [];
+  team.rounds[roundIdx] = entries.reduce((sum,e)=>sum + (e.total||0), 0);
+
+  team.history = team.history || [];
+  team.history[roundIdx] = {
+    round: roundNumber,
+    perPlayer: entries,
+    total: team.rounds[roundIdx],
+    purchases: (team.purchases || []).map(p => ({ id: p.id, title: p.title, price: p.price, tier: p.tier })),
+    coinsAfter: team.coins
+  };
+
+  // clear draft for this team+round, since it's now finalized into history
+  if(state.draftScores && state.draftScores[team.id] && state.draftScores[team.id][roundNumber]){
+    delete state.draftScores[team.id][roundNumber];
+  }
+
+  saveState();
+  alert('Saved scores for ' + team.name + ' — Round ' + roundNumber + ': ' + team.rounds[roundIdx] + ' pts');
+});
+
+/* ======= Leaderboard (with highlight for highest round score) ======= */
+function renderLeaderboard(){
+  const out = document.getElementById('leaderList'); if(!out) return;
+  out.innerHTML = '';
+  const roundIdx = getCurrentRoundNumber() - 1;
+  const ranked = state.teams.map(t=>{
+    const roundPts = (t.rounds && typeof t.rounds[roundIdx] === 'number') ? t.rounds[roundIdx] : 0;
+    const cumulative = (t.rounds || []).reduce((a,b)=>a+(b||0),0);
+    const avg = t.members.length ? Math.round((roundPts / t.members.length)*100)/100 : 0;
+    return {id:t.id,name:t.name,roundPts,cumulative,avg,purchases:t.purchases || []};
+  }).sort((a,b)=>b.roundPts - a.roundPts);
+
+  const topScore = ranked.length ? ranked[0].roundPts : 0;
+
+  ranked.forEach((r, index)=>{
+    const isTop = r.roundPts === topScore && topScore > 0;
+    const card = document.createElement('div');
+    card.style.padding = '10px';
+    card.style.borderRadius = '8px';
+    card.style.border = '1px solid #f1f5f9';
+    card.style.marginBottom = '8px';
+    if(isTop){
+      card.classList.add('leaderboard-card-top');
+    }
+    const medal = isTop ? '<span class="leaderboard-medal">🏆</span>' : '';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800">${medal}${r.name}</div>
+        <div style="font-weight:800">${r.roundPts} pts</div>
+      </div>
+      <div class="tiny">This round avg per member: ${r.avg} — Cumulative: ${r.cumulative} pts</div>
+      <div style="margin-top:8px">
+        <strong>Purchases (this round)</strong>
+        <div class="tiny">${(r.purchases||[]).map(p=>p.title+' ('+p.price+')').join(', ') || 'None'}</div>
+      </div>
+    `;
+    out.appendChild(card);
+  });
+}
+
+/* ======= Round History UI ======= */
+function renderRoundList(){
+  const list = document.getElementById('roundList');
+  if(!list) return;
+  list.innerHTML = '';
+  const roundsFromTeams = state.teams.map(t => Math.max((t.rounds||[]).length, (t.history||[]).length));
+  const maxRounds = Math.max(1, ...(roundsFromTeams.length?roundsFromTeams:[1]));
+  const currentRound = getCurrentRoundNumber();
+  for(let r=1;r<=maxRounds;r++){
+    const btn = document.createElement('div');
+    btn.className = 'round-item' + (r===currentRound ? ' active' : '');
+    btn.textContent = 'Round ' + r;
+    btn.onclick = ()=>{
+      showRoundDetail(r);
+      document.querySelectorAll('.round-item').forEach(el=>el.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    list.appendChild(btn);
+  }
+  if(maxRounds) {
+    showRoundDetail(currentRound || maxRounds);
+  }
+}
+
+function showRoundDetail(roundNumber){
+  const detail = document.getElementById('historyDetail');
+  if(!detail) return;
+  const roundIdx = roundNumber - 1;
+  let html = `<h3 style="margin-top:0">Round ${roundNumber} summary</h3>`;
+  html += `<div class="small-muted" style="margin-bottom:8px">Per-team breakdown (per-player scores, purchases snapshot, coins after round)</div>`;
+  const grid = [];
+  state.teams.forEach(t=>{
+    const hist = (t.history && t.history[roundIdx]) ? t.history[roundIdx] : null;
+    const roundPts = (t.rounds && typeof t.rounds[roundIdx] === 'number') ? t.rounds[roundIdx] : (hist?hist.total:0);
+    const perPlayer = hist ? hist.perPlayer : (t.scores || []);
+    const purchases = hist ? hist.purchases : (t.purchases || []);
+    const coinsAfter = hist ? hist.coinsAfter : t.coins;
+    let card = `<div class="history-card">
+      <div style="display:flex;justify-content:space-between">
+        <strong>${t.name}</strong>
+        <div><strong>${roundPts} pts</strong></div>
+      </div>`;
+    card += `<div class="tiny">Coins after round: ${coinsAfter}</div>`;
+    card += `<div style="margin-top:8px"><strong>Players</strong>`;
+    if(perPlayer && perPlayer.length){
+      card += `<div class="tiny" style="margin-top:6px">`;
+      perPlayer.forEach(p => {
+        card += `<div style="margin-bottom:6px"><strong>${p.member}</strong> — total ${p.total} <div class="tiny">C:${p.content} F:${p.flow} P:${p.presence} D:${p.delivery}</div></div>`;
+      });
+      card += `</div>`;
+    } else {
+      card += `<div class="tiny" style="margin-top:6px">No per-player data saved for this round.</div>`;
+    }
+    card += `</div>`;
+    card += `<div style="margin-top:8px"><strong>Purchases</strong>`;
+    if(purchases && purchases.length){
+      card += `<div class="tiny" style="margin-top:6px">` + purchases.map(p => `${p.title} (${p.price})`).join(', ') + `</div>`;
+    } else {
+      card += `<div class="tiny" style="margin-top:6px">None</div>`;
+    }
+    card += `</div></div>`;
+    grid.push(card);
+  });
+
+  html += `<div class="history-grid">${grid.join('')}</div>`;
+  html += `<div style="margin-top:12px"><button class="btn" onclick="openRoundModal(${roundNumber})">Open full Round ${roundNumber} modal</button></div>`;
+  detail.innerHTML = html;
+}
+
+function openRoundModal(roundNumber){
+  const modal = document.getElementById('roundDetailModal');
+  const title = document.getElementById('roundDetailTitle');
+  const body = document.getElementById('roundDetailBody');
+  title.textContent = 'Round ' + roundNumber + ' — full details';
+  const roundIdx = roundNumber - 1;
+  let html = `<div class="small-muted" style="margin-bottom:10px">Per-team detailed snapshot</div>`;
+  state.teams.forEach(t=>{
+    const hist = (t.history && t.history[roundIdx]) ? t.history[roundIdx] : null;
+    const roundPts = (t.rounds && typeof t.rounds[roundIdx] === 'number') ? t.rounds[roundIdx] : (hist?hist.total:0);
+    html += `<div style="padding:8px;border-bottom:1px solid #f1f5f9;margin-bottom:10px">
+      <h4 style="margin:0">${t.name} — ${roundPts} pts</h4>`;
+    html += `<div class="tiny">Coins after round: ${hist?hist.coinsAfter:t.coins}</div>`;
+    html += `<div style="margin-top:8px"><strong>Players</strong>`;
+    if(hist && hist.perPlayer && hist.perPlayer.length){
+      html += `<ul style="margin:6px 0;padding-left:18px">`;
+      hist.perPlayer.forEach(p => {
+        html += `<li style="margin-bottom:6px">${p.member} — ${p.total} pts <div class="tiny">C:${p.content} F:${p.flow} P:${p.presence} D:${p.delivery}</div></li>`;
+      });
+      html += `</ul>`;
+    } else {
+      html += `<div class="tiny" style="margin-top:6px">No per-player snapshot for this team/round.</div>`;
+    }
+    html += `<div style="margin-top:6px"><strong>Purchases</strong>`;
+    if(hist && hist.purchases && hist.purchases.length){
+      html += `<div class="tiny" style="margin-top:6px">` + hist.purchases.map(p => `${p.title} (${p.price})`).join(', ') + `</div>`;
+    } else {
+      html += `<div class="tiny" style="margin-top:6px">None</div>`;
+    }
+    html += `</div></div>`;
+  });
+  body.innerHTML = html;
+  modal.style.display = 'flex';
+
+  document.getElementById('exportRoundCSV').onclick = ()=> exportRoundCSV(roundNumber);
+}
+
+document.getElementById('closeRoundDetail').onclick = ()=>{ document.getElementById('roundDetailModal').style.display = 'none'; };
+
+function exportRoundCSV(roundNumber){
+  const roundIdx = roundNumber - 1;
+  const headers = ['Team','CoinsAfter','TotalPoints'];
+  const maxPlayers = Math.max(...state.teams.map(t=>t.members.length));
+  for(let i=1;i<=maxPlayers;i++){
+    headers.push(`Player${i}_Name`, `Player${i}_Total`, `Player${i}_C`, `Player${i}_F`, `Player${i}_P`, `Player${i}_D`);
+  }
+  headers.push('Purchases');
+  const rows = [headers.join(',')];
+  state.teams.forEach(t=>{
+    const hist = (t.history && t.history[roundIdx]) ? t.history[roundIdx] : null;
+    const coinsAfter = hist ? hist.coinsAfter : t.coins;
+    const total = hist ? hist.total : (t.rounds && typeof t.rounds[roundIdx] === 'number' ? t.rounds[roundIdx] : 0);
+    const perPlayer = hist ? hist.perPlayer : [];
+    const row = [`"${t.name}"`, coinsAfter, total];
+    for(let i=0;i<maxPlayers;i++){
+      const p = perPlayer[i];
+      if(p){
+        row.push(`"${p.member}"`, p.total, p.content, p.flow, p.presence, p.delivery);
+      } else {
+        row.push('','','','','','');
+      }
+    }
+    const purchases = hist && hist.purchases && hist.purchases.length ? hist.purchases.map(p => p.title + ' ('+p.price+')').join('; ') : '';
+    row.push(`"${purchases}"`);
+    rows.push(row.join(','));
+  });
+  const csv = rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `round_${roundNumber}_details.csv`; document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(url);
+  alert('Exported round ' + roundNumber + ' CSV');
+}
+
+/* ======= UI helpers & orchestration ======= */
+function updateShopCoinsDisplay(){
+  const shop = document.getElementById('shopTeam');
+  const shopCoins = document.getElementById('shopCoins');
+  if(!shop) return;
+  const team = state.teams.find(t=>t.id===shop.value);
+  if(shopCoins) shopCoins.textContent = 'Coins: ' + (team?team.coins:0);
+  const purchases = document.getElementById('purchases');
+  if(purchases){
+    purchases.innerHTML = state.teams.map(t=>`<div class="tiny">${t.name}: ${(t.purchases||[]).length} cards</div>`).join('');
+  }
+  renderDraw();
+}
+document.getElementById('shopTeam')?.addEventListener('change', ()=>{ updateShopCoinsDisplay(); });
+
+function updateQuickStats(){
+  const qs = document.getElementById('quickStats');
+  if(!qs) return;
+  qs.innerHTML = state.teams.map(t=>`<div style="display:flex;justify-content:space-between;padding:6px 0"><div>${t.name}</div><div class="tiny">Coins: ${t.coins}</div></div>`).join('');
+}
+
+function renderRoundListAndDetail(){
+  renderRoundList();
+}
+
+function renderAbout(){
+  const about = document.getElementById('aboutText');
+  if(!about) return;
+
+  about.innerHTML = `
+    <!-- 1 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about1.jpg"
+        alt="About image 1"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+1';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about2.jpg"
+        alt="About image 2"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+2';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about3.jpg"
+        alt="About image 3"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+3';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about4.jpg"
+        alt="About image 4"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+4';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 5 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about5.jpg"
+        alt="About image 5"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+5';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about6.jpg"
+        alt="About image 6"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+6';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 7 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about7.jpg"
+        alt="About image 7"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+7';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+
+    <!-- 8 -->
+    <div class="about-block">
+      <img
+        class="about-img"
+        src="images/about8.jpg"
+        alt="About image 8"
+        onerror="this.src='https://via.placeholder.com/1200x420?text=About+8';"
+      >
+      <div class="about-caption">
+      </div>
+    </div>
+  `;
+}
+
+function renderAll(){
+  const roundNumber = getCurrentRoundNumber();
+  document.getElementById('currentRoundDisplay').textContent = roundNumber;
+  document.getElementById('currentRoundDisplay2').textContent = roundNumber;
+  document.getElementById('roundNumberInput').value = roundNumber;
+
+  renderTeamsList();
+  renderDeck();
+  renderDraw();
+  renderLeaderboard();
+  renderAbout();
+  document.getElementById('pickedTopic').textContent = state.pickedTopic || 'Your topic will appear here.';
+  document.getElementById('quickDisplay').textContent = secondsToDisplay(state.timer.remaining || state.timer.seconds || 45);
+  updateShopCoinsDisplay();
+  renderRoundListAndDetail();
+}
+
+/* ======= startup wiring ======= */
+renderAll();
+showSection('home');
+document.getElementById('mainStart')?.addEventListener('click', ()=>{ navigateTo('topic'); });
+setInterval(()=> saveState(), 8000);
+</script>
+</body>
+</html>
