@@ -312,6 +312,17 @@
             <input id="quickSec" type="number" value="45" min="0" style="width:70px">
             <button class="btn" id="quickSet" style="background:#2563eb;color:#fff">Set</button>
           </div>
+
+    <!-- Optional interval chime -->
+    <div style="margin-top:8px" class="tiny">Optional: ring every...</div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <input id="quickInterval" type="number" value="0" min="0" style="width:90px" placeholder="e.g. 10">
+      <select id="quickIntervalUnit" style="width:110px">
+        <option value="seconds">seconds</option>
+        <option value="minutes">minutes</option>
+      </select>
+    </div>
+      
           <div style="margin-top:12px" class="big" id="quickDisplay">00:45</div>
           <div class="controls" style="margin-top:10px">
             <button class="btn green" id="quickStart">Start</button>
@@ -369,7 +380,7 @@ let state = {
   deck: [],
   drawn: [],
   pickedTopic: '',
-  timer: {seconds:45, running:false, remaining:45},
+  timer: {seconds:45, running:false, remaining:45, interval:0},
   round: { current: 1 },
   // NEW: auto-save drafts per team & round
   draftScores: {}
@@ -395,7 +406,7 @@ function loadState(){
         deck: [],
         drawn: [],
         pickedTopic: '',
-        timer: {seconds:45, running:false, remaining:45},
+        timer: {seconds:45, running:false, remaining:45, interval:0},
         round: { current: 1 },
         draftScores: {}
       }, parsed);
@@ -450,7 +461,7 @@ function initDefaults(){
   ];
   state.pickedTopic = '';
   state.drawn = [];
-  state.timer = { seconds:45, running:false, remaining:45 };
+  state.timer = { seconds:45, running:false, remaining:45, interval:0 };
   state.round = { current: 1 };
   state.draftScores = {};
   saveState();
@@ -725,16 +736,40 @@ function renderDeck(){
   }).join('');
 }
 
-document.getElementById('drawCardsBtn')?.addEventListener('click', ()=>{
+document.getElementById('drawCardsBtn')?.addEventListener('click', () => {
   const pool = state.deck.filter(c => !c.soldBy).slice();
   const drawn = [];
-  while(drawn.length < 5 && pool.length){
-    const i = Math.floor(Math.random()*pool.length);
-    drawn.push(pool.splice(i,1)[0]);
+
+  // Assign weights so high-numbered cards are rare
+  function weightFor(card) {
+    const num = parseInt(card.id.replace('card', ''), 10);
+
+    if (num === 15) return 0.05;       // VERY low probability
+    if (num >= 11 && num <= 14) return 0.2; // low probability
+    return 1;                          // normal for cards 1–10
   }
-  state.drawn = drawn.map(d=>d.id);
+
+  // Weighted random draw without replacement
+  while (drawn.length < 5 && pool.length) {
+    const totalWeight = pool.reduce((sum, c) => sum + weightFor(c), 0);
+    let r = Math.random() * totalWeight;
+    let chosenIndex = 0;
+
+    for (let i = 0; i < pool.length; i++) {
+      r -= weightFor(pool[i]);
+      if (r <= 0) {
+        chosenIndex = i;
+        break;
+      }
+    }
+
+    drawn.push(pool.splice(chosenIndex, 1)[0]);
+  }
+
+  state.drawn = drawn.map(d => d.id);
   saveState();
 });
+
 
 function renderDraw(){
   const drawArea = document.getElementById('drawArea'); if(!drawArea) return;
@@ -864,27 +899,65 @@ function secondsToDisplay(s){
   const ss = String(s%60).padStart(2,'0');
   return `${mm}:${ss}`;
 }
-document.getElementById('quickSet')?.addEventListener('click', ()=>{
-  const m = parseInt(document.getElementById('quickMin').value)||0;
-  const s = parseInt(document.getElementById('quickSec').value)||0;
-  state.timer.seconds = m*60 + s; state.timer.remaining = state.timer.seconds;
-  document.getElementById('quickDisplay').textContent = secondsToDisplay(state.timer.remaining);
+document.getElementById('quickSet')?.addEventListener('click', () => {
+  const m = parseInt(document.getElementById('quickMin').value) || 0;
+  const s = parseInt(document.getElementById('quickSec').value) || 0;
+  const totalSeconds = m * 60 + s;
+
+  if (totalSeconds <= 0) {
+    alert('Set a time greater than 0.');
+    return;
+  }
+
+  // Read interval fields
+  const intervalValue = parseInt(document.getElementById('quickInterval')?.value) || 0;
+  const intervalUnit = document.getElementById('quickIntervalUnit')?.value || 'seconds';
+
+  let intervalSeconds = 0;
+  if (intervalValue > 0) {
+    intervalSeconds = intervalUnit === 'minutes'
+      ? intervalValue * 60
+      : intervalValue;
+  }
+
+  state.timer.seconds = totalSeconds;
+  state.timer.remaining = totalSeconds;
+  state.timer.interval = intervalSeconds;
+
+  document.getElementById('quickDisplay').textContent =
+    secondsToDisplay(state.timer.remaining);
+
   saveState();
 });
+
 let qInt = null;
 function updateQuickDisplay(){
   document.getElementById('quickDisplay').textContent = secondsToDisplay(state.timer.remaining || state.timer.seconds || 45);
 }
-document.getElementById('quickStart')?.addEventListener('click', ()=>{
-  if(qInt) return;
-  qInt=setInterval(()=>{
-    if(state.timer.remaining>0){
+document.getElementById('quickStart')?.addEventListener('click', () => {
+  if (qInt) return; // already running
+
+  qInt = setInterval(() => {
+    if (state.timer.remaining > 0) {
       state.timer.remaining--;
       updateQuickDisplay();
+
+      // Interval chime: ring every X seconds/minutes if set
+      if (state.timer.interval && state.timer.interval > 0) {
+        // This will ring when remaining time hits multiples of the interval
+        // Example: 60s total, interval=10s → rings at 50,40,30,20,10
+        if (state.timer.remaining > 0 &&
+            state.timer.remaining % state.timer.interval === 0) {
+          playTimerSound();
+        }
+      }
     } else {
-      clearInterval(qInt);qInt=null; alert('Time up');
+      clearInterval(qInt);
+      qInt = null;
+      playTimerSound();     // Final ring when time is up
+      alert('Time up');
     }
-  },1000)
+  }, 1000);
 });
 document.getElementById('quickPause')?.addEventListener('click', ()=>{ clearInterval(qInt);qInt=null });
 document.getElementById('quickReset')?.addEventListener('click', ()=>{
@@ -1222,7 +1295,13 @@ function updateShopCoinsDisplay(){
   }
   renderDraw();
 }
-document.getElementById('shopTeam')?.addEventListener('change', ()=>{ updateShopCoinsDisplay(); });
+document.getElementById('shopTeam')?.addEventListener('change', () => {
+  // Clear currently drawn cards whenever another team is selected.
+  // Cards will only appear again after "Draw 5 Cards" is clicked.
+  state.drawn = [];
+  saveState(); // will re-render and show "No draw yet. Click Draw 5."
+});
+
 
 function updateQuickStats(){
   const qs = document.getElementById('quickStats');
@@ -1354,11 +1433,27 @@ function renderAll(){
   renderRoundListAndDetail();
 }
 
+function playTimerSound(){
+  const audio = document.getElementById('timerSound');
+  if(!audio) return;
+  try {
+    audio.currentTime = 0;
+    audio.play();
+  } catch (e) {
+    console.warn('Could not play timer sound:', e);
+  }
+}
+
 /* ======= startup wiring ======= */
 renderAll();
 showSection('home');
 document.getElementById('mainStart')?.addEventListener('click', ()=>{ navigateTo('topic'); });
 setInterval(()=> saveState(), 8000);
 </script>
+
+<!-- audio element must be OUTSIDE the <script> -->
+<audio id="timerSound" src="sounds/ring.mp3" preload="auto"></audio>
+
 </body>
 </html>
+
